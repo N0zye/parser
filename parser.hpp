@@ -35,23 +35,32 @@ struct Token {
 	std::string value;
 };
 
-struct ASTNode;
-using NodeType = std::variant<std::tuple<ASTNode*,char, ASTNode*>, std::pair<std::string, ASTNode*>, ASTNode*, double, char>;
+// struct ASTNode;
+// using NodeType = std::variant<std::tuple<ASTNode*,char, ASTNode*>, std::pair<std::string, ASTNode*>, ASTNode*, double, char>;
 
-struct ASTNode {
+// struct ASTNode {
 	
-	ASTNode(ParserTypes type, NodeType value) 
-	: type(type), value(value) {}
+// 	ASTNode(ParserTypes type, NodeType value) 
+// 	: type(type), value(value) {}
 	
+// 	ParserTypes type;
+// 	NodeType value;
+// };
+using NodeType = std::variant<std::string, char, double, int>;
+struct ASTnode {
+	ASTnode(ParserTypes type, NodeType value) 
+		: type(type), value(value), left(nullptr), right(nullptr) {}
+	//Overload
+	ASTnode(ParserTypes type, NodeType value, ASTnode* left) 
+		: type(type), value(value), left(left), right(nullptr) {}
+	//Overload
+	ASTnode(ParserTypes type, NodeType value, ASTnode* left, ASTnode* right) 
+		: type(type), value(value), left(left), right(right) {}
+
 	ParserTypes type;
 	NodeType value;
-};
-
-struct AST{
-	ASTNode* root;
-	
-	AST(ASTNode* root)
-	: root(root) {}
+	ASTnode* left;
+	ASTnode* right;
 };
 
 // SYNTAX ERROR DEFINITION
@@ -151,17 +160,17 @@ public:
 
 	//* Post order traversal
 	//NOTE: left -> right -> root 
-	void* eval(AST tree) {
-		
-	}
+	// void* eval(ASTnode* root) {
 
-	AST operator()(std::string expression) {
+	// }
+
+	ASTnode* parse(std::string expression) {
 		_tokenstream = tokenize(expression);
 		if (!tokenstream_is_valid()) {
 			throw(std::syntax_error("Tokenizer: unexpected token"));
 		}
 		else {
-			return AST{new ASTNode(ParserTypes::Expression, Expression())};	
+			return Expression();	
 		}
 	}
 	
@@ -170,7 +179,7 @@ public:
 	*	: AdditiveExpression
 	*	;
 	*/
-	ASTNode* Expression() {
+	ASTnode* Expression() {
 		return  AdditiveExpression();
 	}
 	
@@ -180,20 +189,8 @@ public:
 	*	| AdditiveExpression ADDITIVE_OPERATOR MultiplicativeExpression
 	*	;
 	*/
-	ASTNode* AdditiveExpression() {
-		ASTNode* left = MultiplicativeExpression(); // Parse the left operand
-		
-		// Check if there are more tokens and if they are additive operators
-		while (!_tokenstream.empty() && (_tokenstream.front().type == ADDITIVE_OPERATOR)) {
-			Token op = _tokenstream.front(); // Get the operator
-			_tokenstream.pop(); // Remove the operator token
-			ASTNode* right = MultiplicativeExpression(); // Parse the right operand
-			
-			// Create a new AST node representing the addition operation
-			left = new ASTNode(ParserTypes::BinaryExpression, std::make_tuple(left, op.value[0], right));
-		}
-		
-		return left;
+	ASTnode* AdditiveExpression() {
+		return _BinaryExpression(Parser::MultiplicativeExpression, ADDITIVE_OPERATOR);
 	}
 	
 	/*
@@ -202,20 +199,8 @@ public:
 	*	| MultiplicativeExpression MULTIPLICATIVE_OPERATOR ExponentiativeExpression
 	*	;
 	*/
-	ASTNode* MultiplicativeExpression() {
-		ASTNode* left = ExponentiativeExpression(); // Parse the left operand
-		
-		// Check if there are more tokens and if they are additive operators
-		while (!_tokenstream.empty() && (_tokenstream.front().type == MULTIPLICATIVE_OPERATOR)) {
-			Token op = _tokenstream.front(); // Get the operator
-			_tokenstream.pop(); // Remove the operator token
-			ASTNode* right = ExponentiativeExpression(); // Parse the right operand
-			
-			// Create a new AST node representing the addition operation
-			left = new ASTNode(ParserTypes::BinaryExpression, std::make_tuple(left, op.value[0], right));
-		}
-		
-		return left;
+	ASTnode* MultiplicativeExpression() {
+		return _BinaryExpression(Parser::ExponentiativeExpression, MULTIPLICATIVE_OPERATOR);
 	}
 	
 	/*
@@ -224,22 +209,27 @@ public:
 	*	| ExponentiativeExpression EXPONENTIATION_OPERATOR PrimaryExpression
 	*	;
 	*/
-	ASTNode* ExponentiativeExpression() {
-		ASTNode* left = PrimaryExpression(); // Parse the left operand
-		
-		// Check if there are more tokens and if they are additive operators
-		while (!_tokenstream.empty() && (_tokenstream.front().type == EXPONENTIATION_OPERATOR)) {
-			Token op = _tokenstream.front(); // Get the operator
+	ASTnode* ExponentiativeExpression() {
+
+		return _BinaryExpression(Parser::PrimaryExpression, EXPONENTIATION_OPERATOR);
+	}
+	
+	//* BinaryExpression helper method
+	ASTnode* _BinaryExpression(ASTnode* (Parser::*builderName)(), TokenType operatorToken) {
+		ASTnode* left = (this->*builderName)();
+
+		while (!_tokenstream.empty() && (_tokenstream.front().type == operatorToken)) {
+			char op = _tokenstream.front().value.at(0); // Get the operator
 			_tokenstream.pop(); // Remove the operator token
-			ASTNode* right = PrimaryExpression(); // Parse the right operand
+			ASTnode* right = (this->*builderName)(); // Parse the right operand, consuming the passed function
 			
 			// Create a new AST node representing the addition operation
-			left = new ASTNode(ParserTypes::BinaryExpression, std::make_tuple(left, op.value[0], right));
+			left = new ASTnode(ParserTypes::BinaryExpression, op, left, right);
 		}
 		
 		return left;
 	}
-	
+
 	/*
 	*PrimaryExpression
 	*	: Literal
@@ -247,7 +237,7 @@ public:
 	*	| MathFunction
 	*	;
 	*/
-	ASTNode* PrimaryExpression() {
+	ASTnode* PrimaryExpression() {
 		switch (_tokenstream.front().type) {
 		case OPEN_PAREN:
 			return ParenthesizedExpression();
@@ -265,10 +255,10 @@ public:
 	*	: FUNCTION ParenthesizedExpression
 	*	;
 	*/
-	ASTNode* MathFunction() {
+	ASTnode* MathFunction() {
 		std::string functionName = _tokenstream.front().value;
 		_tokenstream.pop();
-		return new ASTNode(ParserTypes::MathFunction, std::make_pair(functionName, ParenthesizedExpression()));
+		return new ASTnode(ParserTypes::MathFunction, functionName, ParenthesizedExpression());
 	}
 
 	/*
@@ -276,9 +266,9 @@ public:
 	*	: OPEN_PAREN Expression CLOSE_PAREN
 	*	;
 	*/
-	ASTNode* ParenthesizedExpression() {
+	ASTnode* ParenthesizedExpression() {
 		_tokenstream.pop();
-		ASTNode* expression = Expression();
+		ASTnode* expression = Expression();
 		_tokenstream.pop();
 		return expression;
 	}
@@ -289,7 +279,7 @@ public:
 	*	| VariableLiteral
 	*	;
 	*/
-	ASTNode* Literal() {
+	ASTnode* Literal() {
 		switch (_tokenstream.front().type) {
 		case VARIABLE:
 			return Identifier();
@@ -308,8 +298,8 @@ public:
 	*	: VARIABLE
 	*	;
 	*/
-	ASTNode* Identifier() {
-		ASTNode* ret = new ASTNode(ParserTypes::Identifier, _tokenstream.front().value[0]); //* Var is only 1 char
+	ASTnode* Identifier() {
+		ASTnode* ret = new ASTnode(ParserTypes::Identifier, _tokenstream.front().value[0]); //* Var is only 1 char
 		//Considering only the first char (there's going to be only 1 char anyways cuz of tokenizer rules)
 		_tokenstream.pop();
 		
@@ -322,9 +312,10 @@ public:
 	*	: NUMBER
 	*	;
 	*/
-	ASTNode* NumericLiteral() {
-		ASTNode* ret = new ASTNode(ParserTypes::NumericLiteral, std::stod(_tokenstream.front().value));
-		_tokenstream.pop();
+	ASTnode* NumericLiteral() {
+		ASTnode* ret = new ASTnode(ParserTypes::NumericLiteral, std::stod(_tokenstream.front().value));
+		
+		_tokenstream.pop(); // Eat the token
 		
 		return ret;
 	}
