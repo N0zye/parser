@@ -3,6 +3,7 @@
 #include <variant>
 #include <stdexcept>
 #include <queue>
+#include <cmath>
 
 #ifndef PARSER_HPP_GUARD
 #define PARSER_HPP_GUARD
@@ -35,18 +36,7 @@ struct Token {
 	std::string value;
 };
 
-// struct ASTNode;
-// using NodeType = std::variant<std::tuple<ASTNode*,char, ASTNode*>, std::pair<std::string, ASTNode*>, ASTNode*, double, char>;
-
-// struct ASTNode {
-	
-// 	ASTNode(ParserTypes type, NodeType value) 
-// 	: type(type), value(value) {}
-	
-// 	ParserTypes type;
-// 	NodeType value;
-// };
-using NodeType = std::variant<std::string, char, double, int>;
+using NodeType = std::variant<std::string, char, double>;
 struct ASTnode {
 	ASTnode(ParserTypes type, NodeType value) 
 		: type(type), value(value), left(nullptr), right(nullptr) {}
@@ -158,11 +148,62 @@ private:
 public:
 	
 
-	//* Post order traversal
+	//note Post order traversal
 	//NOTE: left -> right -> root 
-	// void* eval(ASTnode* root) {
+	double eval(ASTnode* root) {
 
-	// }
+		if (root->type == ParserTypes::BinaryExpression) {
+			return _compute_bin(eval(root->left), std::get<char>(root->value), eval(root->right));
+		}else if(root->type == ParserTypes::NumericLiteral) {
+			return std::get<double>(root->value);
+		} else if(root->type == ParserTypes::MathFunction) {
+			return _compute_funct(std::get<std::string>(root->value), eval(root->left));
+		} else {
+			throw std::syntax_error("Eval: unexpected type");
+		}
+	}
+
+	double _compute_funct(std::string function, double x) {
+		if (function == "sin") {
+        return sin(x);
+    } else if (function == "cos") {
+        return cos(x);
+    } else if (function == "tan") {
+        return tan(x);
+    } else if (function == "asin") {
+        return asin(x);
+    } else if (function == "acos") {
+        return acos(x);
+    } else if (function == "atan") {
+        return atan(x);
+    } else {
+        throw std::syntax_error("Unsupported function: " + function);
+    }
+	}
+
+	double _compute_bin(double left, char op, double right) {
+		switch (op)
+		{
+		case '+':
+			return left + right;
+			break;
+		case '-':
+			return left - right;
+			break;
+		case '*':
+			return left * right;
+			break;
+		case '/':
+			return left / right;
+			break;
+		case '^':
+			return pow(left, right);
+			break;
+		default:
+			throw std::syntax_error("Eval: unexpected operator");
+			break;
+		}
+	}
 
 	ASTnode* parse(std::string expression) {
 		_tokenstream = tokenize(expression);
@@ -299,7 +340,7 @@ public:
 	*	;
 	*/
 	ASTnode* Identifier() {
-		ASTnode* ret = new ASTnode(ParserTypes::Identifier, _tokenstream.front().value[0]); //* Var is only 1 char
+		ASTnode* ret = new ASTnode(ParserTypes::Identifier, _tokenstream.front().value[0]); //note Var is only 1 char
 		//Considering only the first char (there's going to be only 1 char anyways cuz of tokenizer rules)
 		_tokenstream.pop();
 		
