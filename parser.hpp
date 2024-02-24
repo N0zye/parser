@@ -80,7 +80,7 @@ std::string findFullNumber(const std::string& expression, int begin) {
 	}
 	return fullNumericLiteral;
 }
-
+ 
 std::string findFullFunction(const std::string& expression, int begin) {
 	//any function (such as sin cos tan atan ecc) *must* be followed by a @ "("
 	std::string fullFunction = "";
@@ -148,6 +148,13 @@ private:
 	}
 public:
 	
+
+	//* Post order traversal
+	//NOTE: left -> right -> root 
+	void* eval(AST tree) {
+		
+	}
+
 	AST operator()(std::string expression) {
 		_tokenstream = tokenize(expression);
 		if (!tokenstream_is_valid()) {
