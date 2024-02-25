@@ -4,8 +4,6 @@
 #include <stdexcept>
 #include <queue>
 #include <cmath>
-#include <unordered_map>
-#include <functional>
 
 #ifndef PARSER_HPP_GUARD
 #define PARSER_HPP_GUARD
