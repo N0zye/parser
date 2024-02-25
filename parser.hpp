@@ -291,7 +291,6 @@ public:
 		return ret;
 	}
 	
-	
 	/* 
 	*NumericLiteral
 	*	: NUMBER
