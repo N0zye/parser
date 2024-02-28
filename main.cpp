@@ -1,14 +1,14 @@
 #include "parser.hpp"
 #include <iostream>
-
+#include <unordered_map>
+#include <functional>
 using namespace std;
 
 int main() {
 		
-	Parser parser;
-	Interpreter interpreter;
-	//NOTE: every thing with trig functions is considered in rad, not deg
-	cout << interpreter.eval(parser.parse("3*sin(2) * (2-1)")) << endl;
+	ExpressionCalculator f("3*x+cos(x+2)");
+
+	cout << f(88);
 	
 	return 0;
 }

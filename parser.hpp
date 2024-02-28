@@ -1,12 +1,16 @@
 #include <string>
+#include <functional>
+#include <queue>
 #include <vector>
+#include <unordered_map>
 #include <variant>
 #include <stdexcept>
-#include <queue>
 #include <cmath>
 
 #ifndef PARSER_HPP_GUARD
 #define PARSER_HPP_GUARD
+
+#define PI 3.14159265358979323846
 
 enum TokenType {
 	NUMBER,
@@ -156,7 +160,8 @@ public:
 			return Expression();	
 		}
 	}
-	
+
+private:
 	/* 
 	*Expression 
 	*	: AdditiveExpression
@@ -309,26 +314,33 @@ public:
 
 class Interpreter {
 public:
-	//NOTE Post order traversal
+	//NOTE Post order traversal (i think)
 	//note: left -> right -> root 
-	double eval(ASTnode* root) {
-		if (root->type == ParserTypes::BinaryExpression) {
-			return _compute_bin(eval(root->left), std::get<char>(root->value), eval(root->right));
-		}else if(root->type == ParserTypes::NumericLiteral) {
-			return std::get<double>(root->value);
-		} else if(root->type == ParserTypes::MathFunction) {
-			return _compute_funct(std::get<std::string>(root->value), eval(root->left));
-		 } else if(root->type == ParserTypes::Identifier) {
-			return NAN; //TODO: fix this
-		}
-		 else {
-			throw std::syntax_error("Eval: unexpected type");
-		}
+	static double Evaluate(ASTnode* r, std::unordered_map<char, double> symbol_table) {
+
+		std::function<double(ASTnode*)> eval = [&symbol_table, &eval](ASTnode* root) -> double {
+			if (root->type == ParserTypes::BinaryExpression) {
+				return _compute_bin(eval(root->left), std::get<char>(root->value), eval(root->right));
+			}else if(root->type == ParserTypes::NumericLiteral) {
+				return std::get<double>(root->value);
+			} else if(root->type == ParserTypes::MathFunction) {
+				return _compute_funct(std::get<std::string>(root->value), eval(root->left));
+			 } else if(root->type == ParserTypes::Identifier) {
+				return symbol_table[std::get<char>(root->value)];
+			}
+			 else {
+				throw std::syntax_error("Eval: unexpected type");
+			}
+		};
+
+		return eval(r);
 	}
 
+private:
 	// Helper methods
-	double _compute_funct(std::string function, double x) {
-		if (function == "sin") {
+	static double _compute_funct(std::string function, double x) {
+	x = x* PI/180;
+	if (function == "sin") {
         return sin(x);
     } else if (function == "cos") {
         return cos(x);
@@ -345,7 +357,7 @@ public:
     }
 	}
 
-	double _compute_bin(double left, char op, double right) {
+	static double _compute_bin(double left, char op, double right) {
 		switch (op)
 		{
 		case '+':
@@ -368,7 +380,50 @@ public:
 			break;
 		}
 	}
+
+	// to make a utility class
+	Interpreter() {}
+
+};
+
+class ExpressionCalculator {
+private:
+	ASTnode* expression_AST;
+	std::unordered_map<char, double> symbol_table;
+	Parser parser;
+public:
+	double operator()(double x) {
+		symbol_table['x'] = x;
+		return Interpreter::Evaluate(expression_AST, symbol_table);
+	}
+	ExpressionCalculator(std::string expression) {
+		expression_AST = parser.parse(expression);
+		symbol_table['x'] = NAN;
+	}
+	void setExpression(std::string new_expression) {
+		expression_AST = parser.parse(new_expression);
+	}
+	void setVariable(char variable, double value) {
+		if (variable != 'x') {
+			//note ExpressionCalculator only supports var x, maybe implement multivariable expressions
+			throw std::syntax_error("No variables except for 'x' are supported");
+		}
+		symbol_table[variable] = value;
+ 	}
 };
 
 
+std::function<double(ASTnode*, double)> create_function() {
+
+    return {[](ASTnode* root, double x) -> double {
+        std::unordered_map<char, double> symbol_table = {{'x', x}};
+        double ris = Interpreter::Evaluate(root, symbol_table);
+        return std::abs(ris) < 1e-10 ? 0 : ris; //just to remove some of the double inaccuracy
+    }};
+}
+
+
+
 #endif /* PARSER_HPP_GUARD */
+
+//TODO implement multi variable support (ex 3x*z-3), but it'll require some sort of check (error or NAN)
