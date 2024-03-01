@@ -5,7 +5,7 @@
 C++ Math Expressions parser header-only no template library.
 
 ## Usage
-Dowload and include the header in the project, create an instance of the `MathExpression` class (eg. `f` like `f(x)`).
+[Dowload](https://github.com/N0zye/parser/releases/download/v1.0.0/parser.hpp) and include the header in the project, create an instance of the `MathExpression` class (eg. `f` like `f(x)`).
 The contained expression may be changed like in the exemple.
 Get the value using the `()` operator
 
