@@ -6,8 +6,8 @@ using namespace std;
 
 int main() {
 		
-	ExpressionCalculator f("3*x+cos(x+2)");
-
+	MathExpression f("3*x+cos(x+2)");
+	f.setExpression("x+cos(x+2)");
 	cout << f(88);
 	
 	return 0;

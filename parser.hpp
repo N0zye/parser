@@ -70,7 +70,6 @@ namespace std {
 }
 
 // TOKENIZER
-// TODO redo the tokenizer in a single class using RegExp (#include <regex>)
 
 std::string findFullNumber(const std::string& expression, int begin) {
 	std::string fullNumericLiteral = "";
@@ -386,7 +385,7 @@ private:
 
 };
 
-class ExpressionCalculator {
+class MathExpression {
 private:
 	ASTnode* expression_AST;
 	std::unordered_map<char, double> symbol_table;
@@ -396,34 +395,26 @@ public:
 		symbol_table['x'] = x;
 		return Interpreter::Evaluate(expression_AST, symbol_table);
 	}
-	ExpressionCalculator(std::string expression) {
+	MathExpression(std::string expression) {
 		expression_AST = parser.parse(expression);
 		symbol_table['x'] = NAN;
 	}
 	void setExpression(std::string new_expression) {
 		expression_AST = parser.parse(new_expression);
 	}
-	void setVariable(char variable, double value) {
-		if (variable != 'x') {
-			//note ExpressionCalculator only supports var x, maybe implement multivariable expressions
-			throw std::syntax_error("No variables except for 'x' are supported");
-		}
-		symbol_table[variable] = value;
- 	}
+	// void setVariable(char variable, double value) {
+	// 	if (variable != 'x') {
+	// 		//note ExpressionCalculator only supports var x, maybe implement multivariable expressions
+	// 		throw std::syntax_error("No variables except for 'x' are supported");
+	// 	}
+	// 	symbol_table[variable] = value;
+ 	// }
+	~MathExpression() {
+		delete expression_AST;
+	}
 };
-
-
-std::function<double(ASTnode*, double)> create_function() {
-
-    return {[](ASTnode* root, double x) -> double {
-        std::unordered_map<char, double> symbol_table = {{'x', x}};
-        double ris = Interpreter::Evaluate(root, symbol_table);
-        return std::abs(ris) < 1e-10 ? 0 : ris; //just to remove some of the double inaccuracy
-    }};
-}
-
-
 
 #endif /* PARSER_HPP_GUARD */
 
 //TODO implement multi variable support (ex 3x*z-3), but it'll require some sort of check (error or NAN)
+// TODO redo the tokenizer in a single class using RegExp (#include <regex>)
